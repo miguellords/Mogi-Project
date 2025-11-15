@@ -88,17 +88,12 @@ WSGI_APPLICATION = 'mogi.wsgi.application'
 
 DATABASES = {
     'default': {
-<<<<<<< HEAD
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mogi_db',
-        'USER': 'mogi_user',
-        'PASSWORD': 'mogi_1530*',
-        'HOST': 'localhost',
+        'NAME': 'postgres',   # <- Nombre de tu base de datos en Supabase
+        'USER': 'postgres', # <- Usuario que creaste
+        'PASSWORD': 'siqeMqAmR0FPKKxx',  # <- Tu contraseña
+        'HOST': 'db.okpdneacoyzchbolspch.supabase.co',  # <- Solo el host, sin "postgresql://"
         'PORT': '5432',
-=======
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
->>>>>>> bf6ada8866237b4c08a197f8fd8ec2572d16cbd3
     }
 }
 
