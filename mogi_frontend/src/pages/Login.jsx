@@ -34,22 +34,29 @@ const Login = () => {
   // -----------------------------
   // LOGIN CON EMAIL
   // -----------------------------
-  const handleEmailLogin = async (e) => {
-    e.preventDefault();
+const handleEmailLogin = async (e) => {
+  e.preventDefault();
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-    if (error) {
-      setModalMessage(error.message);
-      setShowModal(true);
-      return;
-    }
+  console.log("LOGIN DATA:", data, "ERROR:", error);
 
-    navigate("/");
-  };
+  if (error) {
+    setModalMessage(error.message);
+    setShowModal(true);
+    return;
+  }
+
+  if (data.user) {
+    navigate("/chatbot");
+  } else {
+    setModalMessage("No se pudo iniciar sesión. Revisa tu correo y contraseña.");
+    setShowModal(true);
+  }
+};
 
   // -----------------------------
   // REGISTRO

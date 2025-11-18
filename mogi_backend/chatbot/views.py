@@ -13,18 +13,40 @@ from .ollama import generar_respuesta_normal
 from .crisis_detector import detectar_nivel_crisis
 from .respuetas_empaticas import respuestas_nivel1, respuestas_nivel2
 from .crisis_handler import is_crisis_message, get_crisis_response
-from .utils import guardar_historial
+from .utils import guardar_historial, obtener_contexto_usuario
 from chatbot.contexto import obtener_contexto_concatenado
 import random
 
 @csrf_exempt
 def chatbot_api(request):
     if request.method == "POST":
-        data = json.loads(request.body)
-        message = data.get("message", "")
-        # Aquí integras la lógica de tu chatbot
-        return JsonResponse({"reply": f"Recibí tu mensaje: {message}"})
-    return JsonResponse({"error": "Método no permitido"}, status=405)
+        try:
+            data = json.loads(request.body)
+            user_id = data.get("user_id")            # UID de Supabase
+            display_name = data.get("display_name", "")  # opcional
+            user_message = data.get("message", "").strip()
+
+            if not user_id:
+                return JsonResponse({"reply": "Error: falta user_id."})
+            if not user_message:
+                return JsonResponse({"reply": "No recibí ningún mensaje."})
+
+            # Obtener contexto y generar respuesta
+            contexto = obtener_contexto_usuario(user_id, 5)
+            prompt = contexto + f"\nUsuario: {user_message}\nMOGI:"
+            respuesta = generar_respuesta_normal(prompt)
+
+            # Guardar historial correctamente
+            guardar_historial(user_id, user_message, respuesta, display_name)
+
+            return JsonResponse({"reply": respuesta})
+
+        except Exception as e:
+            return JsonResponse({"reply": f"Ocurrió un error: {str(e)}"})
+
+    return JsonResponse({"reply": "Usa POST para enviar mensajes."})
+
+
 
 #REGISTRO DE AUTENTICACIÓN CON GOOGLE
 @api_view(["POST"])
@@ -108,29 +130,3 @@ def responder_mogi(texto_usuario: str, session):
     session['contexto_actual'] = texto_para_modelo
 
     return respuesta
-
-
-@csrf_exempt
-@csrf_exempt
-def chatbot_api(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            user_message = data.get("message", "").strip()
-
-            if not user_message:
-                return JsonResponse({"reply": "No recibí ningún mensaje."})
-
-            # Llamar a MOGI pasando session
-            response_text = responder_mogi(user_message, request.session)
-
-            # Guardar historial solo si no es crisis
-            if not is_crisis_message(user_message):
-                guardar_historial(user_message, response_text)
-
-            return JsonResponse({"reply": response_text})
-
-        except Exception as e:
-            return JsonResponse({"reply": f"Ocurrió un error: {str(e)}"})
-
-    return JsonResponse({"reply": "Envía un mensaje usando POST."})
