@@ -1,13 +1,9 @@
+# chatbot/ollama.py
 import requests
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from .mongo import get_db
 from .generate_embeddings import model
-from .contexto import obtener_contexto
 from .utils import find_most_similar
-
-db = get_db()
-
 
 def llama_generate_response(prompt: str):
     """
@@ -16,7 +12,7 @@ def llama_generate_response(prompt: str):
     try:
         url = "http://localhost:11434/api/generate"
         payload = {
-            "model": "mogi",   # Modelo personalizado definido en tu Modelfile
+            "model": "mogi",   # Modelo personalizado
             "prompt": prompt,
             "stream": False
         }
@@ -31,21 +27,23 @@ def llama_generate_response(prompt: str):
         return f"No pude generar respuesta con MOGI/LLaMA: {e}"
 
 
-def generar_respuesta_normal(texto_usuario):
+def generar_respuesta_normal(prompt, user_id=None):
     """
-    Flujo normal del chatbot:
+    Genera la respuesta de MOGI:
     1. Coincidencia literal
     2. Coincidencia semántica
     3. Respuesta generativa con MOGI
     """
 
-    # --- 1. COINCIDENCIA LITERAL ---
-    literal = db.responses_dataset.find_one({"frase": texto_usuario.lower()})
+    # --- 1. Coincidencia literal ---
+    from .mongo import get_db
+    db = get_db()
+    literal = db.responses_dataset.find_one({"frase": prompt.lower()})
     if literal:
         return literal["respuesta"]
 
-    # --- 2. COINCIDENCIA SEMÁNTICA ---
-    user_embedding = model.encode(texto_usuario)
+    # --- 2. Coincidencia semántica ---
+    user_embedding = model.encode(prompt)
     best_match = find_most_similar(user_embedding)
 
     if best_match:
@@ -57,28 +55,24 @@ def generar_respuesta_normal(texto_usuario):
         if similarity > 0.65:
             return best_match["respuesta"]
 
-    # --- 3. GENERAR RESPUESTA CON MOGI ---
-    contexto = obtener_contexto(n=5) or "No hay mensajes previos."
-
-    prompt = f"""
+    # --- 3. Generar respuesta con MOGI usando solo contexto de sesión ---
+    # Ya recibimos el contexto concatenado desde views.py
+    final_prompt = f"""
 Eres MOGI, un asistente emocional cálido, empático, cercano y profundo.
 
-INSTRUCCIONES IMPORTANTES:
+INSTRUCCIONES:
 - Responde con mucha empatía, calidez y contención emocional.
 - Ofrece respuestas largas (mínimo 150–250 palabras).
 - Sé reflexivo, humano, cercano y natural.
 - No repitas lo que el usuario dice.
-- No hagas preguntas repetitivas como “¿quieres contarme más?”.
+- No hagas preguntas repetitivas.
 - Valida emociones sin patologizar ni sonar como terapeuta profesional.
 - Habla como un amigo sabio que acompaña de verdad.
-- Integra el contexto previo de forma natural.
+- Integra el contexto previo proporcionado de forma natural.
 
-Contexto previo reciente de la conversación:
-{contexto}
-
-El usuario dice: "{texto_usuario}"
+Contexto actual del usuario (solo de esta sesión):
+{prompt}
 
 MOGI (responde con profundidad emocional, calidez y un solo mensaje, extenso y humano):
 """
-
-    return llama_generate_response(prompt).strip()
+    return llama_generate_response(final_prompt).strip()
