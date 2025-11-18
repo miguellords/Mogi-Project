@@ -17,7 +17,7 @@ export default function AuthCallback() {
       console.log("Sesion:", data.session); // <--- AQUI VES LA SESION
 
       if (data.session) {
-        navigate("/dashboard");
+        navigate("/chatbot");
       }
     }
 
